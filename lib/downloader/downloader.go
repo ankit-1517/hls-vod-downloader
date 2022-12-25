@@ -54,11 +54,7 @@ func getDirPath(outputFolder string) string {
 	return path.Join(pwd, outputFolder)
 }
 
-/*
-Returns:
-1. Array of string containing path to segments fetched
-2. Error occured
-*/
+// returns error occurred, if any
 func (dldr *Downloader) DownloadFromMasterUrl(
 	masterUrl string,
 	outputPath string,
@@ -79,11 +75,6 @@ func (dldr *Downloader) DownloadFromMasterUrl(
 	return dldr.downloadFromIndexUrl(variantUrl, outputPath, outputName)
 }
 
-/*
-Returns:
-1. Array of string containing path to segments fetched
-2. Error occured
-*/
 func (dldr *Downloader) downloadFromIndexUrl(
 	url string,
 	outputPath string,
@@ -141,11 +132,11 @@ func (dldr *Downloader) downloadSegments(
 		wg.Add(1)
 		sem <- struct{}{}
 		go func(segment *m3u8.MediaSegment, path string) {
-			// err := dldr.downloadSegment(segment, url, path)
-			// if err != nil {
-			// 	fmt.Printf("error occured downloading segment: %v", err.Error())
-			// 	failed = true
-			// }
+			err := dldr.downloadSegment(segment, url, path)
+			if err != nil {
+				fmt.Printf("error occured downloading segment: %v", err.Error())
+				failed = true
+			}
 			<-sem
 			wg.Done()
 		}(segment, idxPath)
