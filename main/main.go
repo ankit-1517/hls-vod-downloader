@@ -8,7 +8,6 @@ import (
 
 func downloadVod(url string, outputFolder string, outputFile string) {
 	dldr := downloader.NewDownloader()
-
 	err := dldr.DownloadFromMasterUrl(
 		url,
 		outputFolder,
