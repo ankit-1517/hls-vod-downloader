@@ -26,6 +26,6 @@ func main() {
 
 	url := "url"
 	outputFolder := "output"
-	outputFile := "boxing.mp4"
+	outputFile := "outputFile.mp4"
 	downloadVod(url, outputFolder, outputFile)
 }
