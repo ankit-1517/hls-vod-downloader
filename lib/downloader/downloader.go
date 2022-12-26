@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/grafov/m3u8"
+	log "github.com/sirupsen/logrus"
 )
 
 type Downloader struct {
@@ -65,10 +66,14 @@ func (dldr *Downloader) DownloadFromMasterUrl(
 		return err
 	}
 
+	log.Debugf("successfully downloaded master manifest for %v url %v: %v", outputName, masterUrl, masterManifest.String())
+
 	// TODO: Add a better way to choose variant to be downloaded
 	variant := findMaxBandwidthVariant(masterManifest.Variants)
 	if variant == nil {
-		return fmt.Errorf("unable to determine variant to be fetched!")
+		err = fmt.Errorf("unable to determine variant to be fetched!")
+		log.Error(err.Error())
+		return err
 	}
 
 	variantUrl := resolveReference(finalUrl, variant.URI)
@@ -76,14 +81,17 @@ func (dldr *Downloader) DownloadFromMasterUrl(
 }
 
 func (dldr *Downloader) downloadFromIndexUrl(
-	url string,
+	indexUrl string,
 	outputPath string,
 	outputName string,
 ) error {
-	finalUrl, indexManifest, err := dldr.fetcher.fetchIndexManifest(url)
+	finalUrl, indexManifest, err := dldr.fetcher.fetchIndexManifest(indexUrl)
 	if err != nil {
 		return err
 	}
+
+	log.Debugf("successfully downloaded master manifest for %v url %v: %v", outputName, indexUrl, indexManifest.String())
+
 	return dldr.downloadFromIndexManifest(indexManifest, finalUrl, outputPath, outputName)
 }
 
@@ -113,7 +121,7 @@ func (dldr *Downloader) joinSegments(
 
 func (dldr *Downloader) downloadSegments(
 	variant *m3u8.MediaPlaylist,
-	url string,
+	baseUrl string,
 	outputPath string,
 	outputName string,
 ) ([]string, error) {
@@ -124,7 +132,7 @@ func (dldr *Downloader) downloadSegments(
 	failed := false
 
 	for idx, segment := range variant.Segments {
-		if segment == nil {
+		if failed || segment == nil {
 			continue
 		}
 		idxPath := path.Join(outputPath, fmt.Sprintf("%v_%v.ts", outputName, idx))
@@ -132,9 +140,8 @@ func (dldr *Downloader) downloadSegments(
 		wg.Add(1)
 		sem <- struct{}{}
 		go func(segment *m3u8.MediaSegment, path string) {
-			err := dldr.downloadSegment(segment, url, path)
+			err := dldr.downloadSegment(segment, baseUrl, path)
 			if err != nil {
-				fmt.Printf("error occured downloading segment: %v", err.Error())
 				failed = true
 			}
 			<-sem
@@ -144,7 +151,9 @@ func (dldr *Downloader) downloadSegments(
 	wg.Wait()
 
 	if failed {
-		return nil, fmt.Errorf("error occured fetching segments")
+		err := fmt.Errorf("some error occurred when fetching segments")
+		log.Error(err.Error())
+		return nil, err
 	}
 	return outputPaths, nil
 }
@@ -160,9 +169,14 @@ func (dldr *Downloader) downloadSegment(segment *m3u8.MediaSegment, url string, 
 func (dldr *Downloader) saveToDisk(rsp []byte, outputPath string) error {
 	file, err := os.Create(outputPath)
 	if err != nil {
+		log.Errorf("error creating file %v: %v", outputPath, err.Error())
 		return err
 	}
 	defer file.Close()
 	_, err = file.Write(rsp)
-	return err
+	if err != nil {
+		log.Errorf("error writing to file %v: %v", outputPath, err.Error())
+		return err
+	}
+	return nil
 }

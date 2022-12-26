@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type FMHelper struct{}
@@ -18,15 +20,30 @@ func (ff *FMHelper) ConvertSegmentsToMp4(
 	outputFile string,
 	outputPath string,
 ) error {
+	log.Debugf("creating concat file for vod %v", outputFile)
 	concatFile, err := createTempConcatFile(inputFiles, outputPath)
 	if err != nil {
+		log.Errorf("error creating concat file for vod %v: %v", outputFile, err.Error())
 		return err
 	}
+	log.Infof("successfully created concat file for vod %v", outputFile)
+
+	log.Debugf("creating ts file for vod %v", outputFile)
 	combinedTsFile, err := createCombinedTsFile(concatFile, outputPath)
 	if err != nil {
+		log.Errorf("error creating ts file for vod %v: %v", outputFile, err.Error())
 		return err
 	}
-	return createMp4FromTs(combinedTsFile, outputFile)
+	log.Infof("successfully created ts file for vod %v", outputFile)
+
+	log.Debugf("creating mp4 file for vod %v", outputFile)
+	err = createMp4FromTs(combinedTsFile, outputFile)
+	if err != nil {
+		log.Errorf("error creating mp4 file for vod %v: %v", outputFile, err.Error())
+		return err
+	}
+	log.Infof("successfully created mp4 file for vod %v", outputFile)
+	return nil
 }
 
 func createTempConcatFile(
