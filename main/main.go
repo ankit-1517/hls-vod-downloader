@@ -15,7 +15,7 @@ func downloadVod(url string, outputFolder string, outputFile string) {
 		outputFile,
 	)
 	if err != nil {
-		log.Errorf("error occured downloading vod %v %v: %v", url, outputFile, err.Error())
+		log.Errorf("unable to download vod %v from url %v", url, outputFile)
 	} else {
 		log.Infof("vod %v downloaded successfully!", outputFile)
 	}
