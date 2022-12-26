@@ -1,23 +1,30 @@
 package main
 
-// TODO: add logger
-
 import (
-	"fmt"
 	"main/lib/downloader"
+
+	log "github.com/sirupsen/logrus"
 )
 
-func main() {
+func downloadVod(url string, outputFolder string, outputFile string) {
 	dldr := downloader.NewDownloader()
-
 	err := dldr.DownloadFromMasterUrl(
-		"url",
-		"output",
-		"videoname.mp4",
+		url,
+		outputFolder,
+		outputFile,
 	)
 	if err != nil {
-		fmt.Printf("error occured downloading vod: %v", err.Error())
+		log.Errorf("unable to download vod %v from url %v", url, outputFile)
 	} else {
-		fmt.Println("vod downloaded successfully!")
+		log.Infof("vod %v downloaded successfully!", outputFile)
 	}
+}
+
+func main() {
+	log.SetLevel(log.InfoLevel)
+
+	url := "url"
+	outputFolder := "output"
+	outputFile := "outputFile.mp4"
+	downloadVod(url, outputFolder, outputFile)
 }
