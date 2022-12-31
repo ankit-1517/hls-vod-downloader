@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -21,7 +20,7 @@ func (ff *FMHelper) ConvertSegmentsToMp4(
 	outputPath string,
 ) error {
 	log.Debugf("creating concat file for vod %v", outputFile)
-	concatFile, err := createTempConcatFile(inputFiles, outputPath)
+	concatFile, err := createTempConcatFile(inputFiles, outputFile)
 	if err != nil {
 		log.Errorf("error creating concat file for vod %v: %v", outputFile, err.Error())
 		return err
@@ -29,7 +28,7 @@ func (ff *FMHelper) ConvertSegmentsToMp4(
 	log.Infof("successfully created concat file for vod %v", outputFile)
 
 	log.Debugf("creating ts file for vod %v", outputFile)
-	combinedTsFile, err := createCombinedTsFile(concatFile, outputPath)
+	combinedTsFile, err := createCombinedTsFile(concatFile, outputFile)
 	if err != nil {
 		log.Errorf("error creating ts file for vod %v: %v", outputFile, err.Error())
 		return err
@@ -48,9 +47,9 @@ func (ff *FMHelper) ConvertSegmentsToMp4(
 
 func createTempConcatFile(
 	inputFiles []string,
-	outputPath string,
+	outputFile string,
 ) (string, error) {
-	concatFilePath := path.Join(outputPath, "concatFile.txt")
+	concatFilePath := fmt.Sprintf("%v_concatFile.txt", outputFile)
 	file, err := os.Create(concatFilePath)
 	if err != nil {
 		return "", err
@@ -69,9 +68,9 @@ func executeCommand(command string) error {
 
 func createCombinedTsFile(
 	concatFile string,
-	outputPath string,
+	outputFile string,
 ) (string, error) {
-	combinedTsFilePath := path.Join(outputPath, "combined.ts")
+	combinedTsFilePath := fmt.Sprintf("%v_combined.ts", outputFile)
 	return combinedTsFilePath, executeCommand(
 		fmt.Sprintf("ffmpeg -f concat -safe 0 -i %v -c copy %v", concatFile, combinedTsFilePath),
 	)
