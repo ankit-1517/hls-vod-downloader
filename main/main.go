@@ -6,9 +6,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func downloadVod(url string, outputFolder string, outputFile string) {
-	dldr := downloader.NewDownloader()
-	err := dldr.DownloadFromMasterUrl(
+func downloadVod(dldr *downloader.Downloader, url string, outputFolder string, outputFile string) {
+	err := dldr.DownloadVod(
 		url,
 		outputFolder,
 		outputFile,
@@ -20,11 +19,31 @@ func downloadVod(url string, outputFolder string, outputFile string) {
 	}
 }
 
+func downloadVodsFromJson(inputFile string, outputFolder string) {
+	jsonData, err := parseInputJson(inputFile, outputFolder)
+	if err != nil {
+		return
+	}
+
+	dldr := downloader.NewDownloader()
+	for _, reqData := range jsonData {
+		log.Infoln(reqData)
+		go func(reqData *inputJson) {
+			downloadVod(dldr, reqData.Url, reqData.OutputFolder, reqData.OutputFile)
+		}(reqData)
+	}
+}
+
 func main() {
 	log.SetLevel(log.InfoLevel)
-
-	url := "url"
-	outputFolder := "output"
-	outputFile := "outputFile.mp4"
-	downloadVod(url, outputFolder, outputFile)
+	args, err := parseInputArgs()
+	if err != nil {
+		log.Errorf("invalid input: %v", err.Error())
+	} else {
+		if args.url != "" {
+			downloadVod(downloader.NewDownloader(), args.url, args.outputFolder, args.outputFile)
+		} else {
+			downloadVodsFromJson(args.inputFile, args.outputFolder)
+		}
+	}
 }

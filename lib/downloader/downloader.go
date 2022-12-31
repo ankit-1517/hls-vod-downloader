@@ -1,6 +1,7 @@
 package downloader
 
 import (
+	"bytes"
 	"fmt"
 	"main/lib/ffmpeg"
 	"net/url"
@@ -47,36 +48,49 @@ func resolveReference(base, ref string) string {
 	return baseUrl.ResolveReference(refUrl).String()
 }
 
-func getDirPath(outputFolder string) string {
-	pwd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
-	return path.Join(pwd, outputFolder)
-}
-
 // returns error occurred, if any
-func (dldr *Downloader) DownloadFromMasterUrl(
-	masterUrl string,
+func (dldr *Downloader) DownloadVod(
+	manifestUrl string,
 	outputPath string,
 	outputName string,
 ) error {
-	finalUrl, masterManifest, err := dldr.fetcher.fetchMasterManifest(masterUrl)
+	finalUrl, rsp, err := dldr.fetcher.fetch(manifestUrl)
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("successfully downloaded master manifest for %v url %v: %v", outputName, masterUrl, masterManifest.String())
-
-	// TODO: Add a better way to choose variant to be downloaded
-	variant := findMaxBandwidthVariant(masterManifest.Variants)
-	if variant == nil {
-		err = fmt.Errorf("unable to determine variant to be fetched!")
-		log.Error(err.Error())
+	playlist, playlistType, err := m3u8.DecodeFrom(bytes.NewReader(rsp), false)
+	if err != nil {
+		log.Errorf("error decoding manifest from rsp %v: %v", manifestUrl, err.Error())
 		return err
 	}
 
-	variantUrl := resolveReference(finalUrl, variant.URI)
+	if playlistType == m3u8.MASTER {
+		masterPlaylist := playlist.(*m3u8.MasterPlaylist)
+		log.Debugf("successfully downloaded master manifest for %v url %v: %v", outputName, manifestUrl, masterPlaylist.String())
+		return dldr.downloadFromMasterManifest(masterPlaylist, finalUrl, outputPath, outputName)
+	} else if playlistType == m3u8.MEDIA {
+		indexPlaylist := playlist.(*m3u8.MediaPlaylist)
+		log.Debugf("successfully downloaded index manifest for %v url %v: %v", outputName, manifestUrl, indexPlaylist.String())
+		return dldr.downloadFromIndexManifest(indexPlaylist, finalUrl, outputPath, outputName)
+	}
+	return fmt.Errorf("expected playlistType %v or %v, recvd %v", m3u8.MASTER, m3u8.MEDIA, playlistType)
+}
+
+func (dldr *Downloader) downloadFromMasterManifest(
+	masterManifest *m3u8.MasterPlaylist,
+	finalMasterUrl string,
+	outputPath string,
+	outputName string,
+) error {
+	// TODO: Add a better way to choose variant to be downloaded
+	variant := findMaxBandwidthVariant(masterManifest.Variants)
+	if variant == nil {
+		err := fmt.Errorf("unable to determine variant to be fetched!")
+		log.Error(err.Error())
+		return err
+	}
+	variantUrl := resolveReference(finalMasterUrl, variant.URI)
 	return dldr.downloadFromIndexUrl(variantUrl, outputPath, outputName)
 }
 
@@ -90,7 +104,7 @@ func (dldr *Downloader) downloadFromIndexUrl(
 		return err
 	}
 
-	log.Debugf("successfully downloaded master manifest for %v url %v: %v", outputName, indexUrl, indexManifest.String())
+	log.Debugf("successfully downloaded index manifest for %v url %v: %v", outputName, indexUrl, indexManifest.String())
 
 	return dldr.downloadFromIndexManifest(indexManifest, finalUrl, outputPath, outputName)
 }
@@ -101,8 +115,6 @@ func (dldr *Downloader) downloadFromIndexManifest(
 	outputPath string,
 	outputName string,
 ) error {
-	outputPath = getDirPath(outputPath)
-
 	segments, err := dldr.downloadSegments(variant, url, outputPath, outputName)
 	if err != nil {
 		return err

@@ -1,0 +1,17 @@
+[{
+        "url": "url1",
+        "outputFolder": "output",
+        "outputFile": "video.mp4"
+    },
+    {
+        "url": "url2",
+        "outputFile": "video.mp4"
+    },
+    {
+        "url": "url3",
+        "outputFolder": "output"
+    },
+    {
+        "url": "url4"
+    }
+]
