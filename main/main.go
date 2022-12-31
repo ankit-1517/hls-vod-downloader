@@ -27,7 +27,6 @@ func downloadVodsFromJson(inputFile string, outputFolder string) {
 
 	dldr := downloader.NewDownloader()
 	for _, reqData := range jsonData {
-		log.Infoln(reqData)
 		go func(reqData *inputJson) {
 			downloadVod(dldr, reqData.Url, reqData.OutputFolder, reqData.OutputFile)
 		}(reqData)
@@ -41,7 +40,7 @@ func main() {
 		log.Errorf("invalid input: %v", err.Error())
 	} else {
 		if args.url != "" {
-			downloadVod(downloader.NewDownloader(), args.url, args.outputFolder, args.outputFile)
+			downloadVod(downloader.NewDownloader(), args.url, getDirPath(args.outputFolder), args.outputFile)
 		} else {
 			downloadVodsFromJson(args.inputFile, args.outputFolder)
 		}

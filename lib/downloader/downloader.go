@@ -115,12 +115,26 @@ func (dldr *Downloader) downloadFromIndexManifest(
 	outputPath string,
 	outputName string,
 ) error {
+	// create output directory, including parents, if not already present
+	if err := os.MkdirAll(outputPath, os.ModePerm); err != nil {
+		log.Errorf("error creating directory %v: %v", outputPath, err.Error())
+		return err
+	}
+
+	// download vod segments
 	segments, err := dldr.downloadSegments(variant, url, outputPath, outputName)
 	if err != nil {
 		return err
 	}
 
-	return dldr.joinSegments(segments, path.Join(outputPath, outputName), outputPath)
+	outputName = path.Join(outputPath, outputName)
+
+	// use ffmpeg to join segments
+	err = dldr.joinSegments(segments, outputName, outputPath)
+
+	cleanupOutputFolder(outputName, segments)
+
+	return err
 }
 
 func (dldr *Downloader) joinSegments(
@@ -191,4 +205,12 @@ func (dldr *Downloader) saveToDisk(rsp []byte, outputPath string) error {
 		return err
 	}
 	return nil
+}
+
+func cleanupOutputFolder(outputFile string, segments []string) {
+	for _, sgmt := range segments {
+		os.Remove(sgmt)
+	}
+	os.Remove(fmt.Sprintf("%v_concatFile.txt", outputFile))
+	os.Remove(fmt.Sprintf("%v_combined.ts", outputFile))
 }
