@@ -46,34 +46,6 @@ func (ft *fetcher) fetch(url string) (string, []byte, error) {
 
 /*
 Returns:
-1. Final url (possibly redirected) -- useful for fetching index files
-2. Master manifest file
-3. Error occured
-*/
-func (ft *fetcher) fetchMasterManifest(url string) (string, *m3u8.MasterPlaylist, error) {
-	finalUrl, rsp, err := ft.fetch(url)
-	if err != nil {
-		log.Errorf("error fetching manifest %v: %v", url, err.Error())
-		return "", nil, err
-	}
-
-	playlist, playlistType, err := m3u8.DecodeFrom(bytes.NewReader(rsp), false)
-	if err != nil {
-		log.Errorf("error decoding manifest from rsp %v: %v", url, err.Error())
-		return "", nil, err
-	}
-	if playlistType != m3u8.MASTER {
-		err = fmt.Errorf("rcvd file type %v for vod %v, expected %v", playlistType, url, m3u8.MASTER)
-		log.Errorf(err.Error())
-		return "", nil, err
-	}
-
-	masterPlaylist := playlist.(*m3u8.MasterPlaylist)
-	return finalUrl, masterPlaylist, nil
-}
-
-/*
-Returns:
 1. Final url (possibly redirected) -- useful for fetching segment files
 2. Media index file
 3. Error occured
