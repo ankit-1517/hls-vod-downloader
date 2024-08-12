@@ -2,6 +2,7 @@ package main
 
 import (
 	"main/lib/downloader"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -25,12 +26,16 @@ func downloadVodsFromJson(inputFile string, outputFolder string) {
 		return
 	}
 
+	wg := sync.WaitGroup{}
 	dldr := downloader.NewDownloader()
 	for _, reqData := range jsonData {
+		wg.Add(1)
 		go func(reqData *inputJson) {
 			downloadVod(dldr, reqData.Url, reqData.OutputFolder, reqData.OutputFile)
+			wg.Done()
 		}(reqData)
 	}
+	wg.Wait()
 }
 
 func main() {
